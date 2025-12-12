@@ -1,14 +1,8 @@
-import {
-  Args,
-  Mutation,
-  Parent,
-  Query,
-  ResolveField,
-  Resolver,
-} from '@nestjs/graphql';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Args, Info, Mutation, Query, Resolver } from '@nestjs/graphql';
+import type { GraphQLResolveInfo } from 'graphql';
+import { buildPrismaSelect } from 'src/common/prisma-select';
 import { CreateCommentInput } from 'src/graphql/comments/comments.input';
-import { Post } from 'src/graphql/posts/posts.type';
-import { User } from 'src/graphql/users/users.type';
 import { CommentsService } from './comments.service';
 import { Comment } from './comments.type';
 
@@ -18,34 +12,26 @@ export class CommentsResolver {
 
   // создать комментарий
   @Mutation(() => Comment)
-  async createComment(@Args('data') data: CreateCommentInput) {
-    return await this.commentsService.create(data);
+  async createComment(
+    @Args('data') data: CreateCommentInput,
+    @Info() info: GraphQLResolveInfo,
+  ) {
+    const select = buildPrismaSelect(info);
+    return await this.commentsService.create(data, select);
   }
 
   // найти комментарий по id
   @Query(() => Comment, { name: 'comment', nullable: true })
-  async getComment(@Args('id') id: string) {
-    return await this.commentsService.findOne(id);
+  async getComment(@Args('id') id: string, @Info() info: GraphQLResolveInfo) {
+    const select = buildPrismaSelect(info);
+    return await this.commentsService.findOne(id, select);
   }
 
   // все комментарии
   @Query(() => [Comment], { name: 'comments' })
-  async getComments() {
-    return await this.commentsService.findAll();
-  }
-
-  // -------------- ResolveField:
-
-  // получить автора коммента
-  @ResolveField(() => User)
-  async author(@Parent() comment: Comment) {
-    return await this.commentsService.getAuthor(comment.authorId);
-  }
-
-  // получить пост к которому был сделан коммент
-  @ResolveField(() => Post)
-  async post(@Parent() comment: Comment) {
-    return this.commentsService.getPost(comment.postId);
+  async getComments(@Info() info: GraphQLResolveInfo) {
+    const select = buildPrismaSelect(info);
+    return await this.commentsService.findAll(select);
   }
 }
 
