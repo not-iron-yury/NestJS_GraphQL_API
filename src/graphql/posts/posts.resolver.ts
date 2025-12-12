@@ -1,14 +1,8 @@
-import {
-  Args,
-  Mutation,
-  Parent,
-  Query,
-  ResolveField,
-  Resolver,
-} from '@nestjs/graphql';
-import { Comment } from 'src/graphql/comments/comments.type';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Args, Info, Mutation, Query, Resolver } from '@nestjs/graphql';
+import type { GraphQLResolveInfo } from 'graphql';
+import { buildPrismaSelect } from 'src/common/prisma-select';
 import { CreatePostInput } from 'src/graphql/posts/posts.input';
-import { User } from 'src/graphql/users/users.type';
 import { PostsService } from './posts.service';
 import { Post } from './posts.type';
 
@@ -18,34 +12,26 @@ export class PostsResolver {
 
   // создать пост
   @Mutation(() => Post)
-  async createPost(@Args('data') data: CreatePostInput) {
-    return await this.postsService.create(data);
+  async createPost(
+    @Args('data') data: CreatePostInput,
+    @Info() info: GraphQLResolveInfo,
+  ) {
+    const select = buildPrismaSelect(info);
+    return await this.postsService.create(data, select);
   }
 
   // найти пост по id
   @Query(() => Post, { name: 'post', nullable: true })
-  async getPost(@Args('id') id: string) {
-    return await this.postsService.findOne(id);
+  async getPost(@Args('id') id: string, @Info() info: GraphQLResolveInfo) {
+    const select = buildPrismaSelect(info);
+    return await this.postsService.findOne(id, select);
   }
 
   // все посты
   @Query(() => [Post], { name: 'posts' })
-  async getPosts() {
-    return await this.postsService.findAll();
-  }
-
-  // -------------- ResolveField:
-
-  // получить автора поста
-  @ResolveField(() => User)
-  async author(@Parent() post: Post) {
-    return await this.postsService.getAuthor(post.authorId);
-  }
-
-  // получить все комментарии к посту
-  @ResolveField(() => [Comment])
-  async comments(@Parent() post: Post) {
-    return await this.postsService.getAllComments(post.id);
+  async getPosts(@Info() info: GraphQLResolveInfo) {
+    const select = buildPrismaSelect(info);
+    return await this.postsService.findAll(select);
   }
 }
 
