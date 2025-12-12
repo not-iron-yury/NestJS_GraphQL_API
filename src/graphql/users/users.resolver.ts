@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Args, Info, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { GraphQLResolveInfo } from 'graphql';
-import { buildPrismaSelect } from 'src/common/prisma-select';
 import { CreateUserInput } from 'src/graphql/users/users.input';
 import { UsersService } from './users.service';
 import { User } from './users.type';
@@ -12,26 +10,20 @@ export class UsersResolver {
 
   // создать пользователя
   @Mutation(() => User)
-  async createUser(
-    @Args('data') data: CreateUserInput,
-    @Info() info: GraphQLResolveInfo,
-  ) {
-    const select = buildPrismaSelect(info);
-    return await this.usersService.create(data, select);
+  async createUser(@Args('data') data: CreateUserInput) {
+    return await this.usersService.create(data);
   }
 
   // найти пользователя по id
   @Query(() => User)
   async getUser(@Args('id') id: string, @Info() info: GraphQLResolveInfo) {
-    const select = buildPrismaSelect(info);
-    return await this.usersService.findOne(id, select);
+    return await this.usersService.findOne(id, info);
   }
 
   // все пользователи
   @Query(() => [User], { name: 'users' }) // если имя указано вручную — оно заменяет имя метода.
   async getUsers(@Info() info: GraphQLResolveInfo) {
-    const select = buildPrismaSelect(info);
-    return await this.usersService.findAll(select);
+    return await this.usersService.findAll(info);
   }
 }
 

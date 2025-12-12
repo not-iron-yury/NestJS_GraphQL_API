@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
+import type { GraphQLResolveInfo } from 'graphql';
 import { CreateUserInput } from 'src/graphql/users/users.input';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -7,23 +7,21 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateUserInput, select: any) {
+  async create(data: CreateUserInput) {
     return await this.prisma.user.create({
       data,
-      ...select,
     });
   }
 
-  async findOne(id: string, select: any) {
-    return await this.prisma.user.findUnique({
-      where: { id },
-      ...select,
-    });
+  async findOne(id: string, info: GraphQLResolveInfo) {
+    return await this.prisma.findUniqueWithInfo(
+      this.prisma.user, // Prisma модель, к которой делаем запрос
+      { where: { id } }, // аргументы Prisma (условия поиска)
+      info, // GraphQLResolveInfo — AST запроса, используется для построения select/include
+    );
   }
 
-  async findAll(select: any) {
-    return await this.prisma.user.findMany({
-      ...select,
-    });
+  async findAll(info: GraphQLResolveInfo) {
+    return await this.prisma.findManyWithInfo(this.prisma.user, {}, info);
   }
 }

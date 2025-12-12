@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Args, Info, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { GraphQLResolveInfo } from 'graphql';
-import { buildPrismaSelect } from 'src/common/prisma-select';
 import { CreateCommentInput } from 'src/graphql/comments/comments.input';
 import { CommentsService } from './comments.service';
 import { Comment } from './comments.type';
@@ -16,22 +14,19 @@ export class CommentsResolver {
     @Args('data') data: CreateCommentInput,
     @Info() info: GraphQLResolveInfo,
   ) {
-    const select = buildPrismaSelect(info);
-    return await this.commentsService.create(data, select);
+    return await this.commentsService.create(data, info);
   }
 
   // найти комментарий по id
   @Query(() => Comment, { name: 'comment', nullable: true })
   async getComment(@Args('id') id: string, @Info() info: GraphQLResolveInfo) {
-    const select = buildPrismaSelect(info);
-    return await this.commentsService.findOne(id, select);
+    return await this.commentsService.findOne(id, info);
   }
 
   // все комментарии
   @Query(() => [Comment], { name: 'comments' })
   async getComments(@Info() info: GraphQLResolveInfo) {
-    const select = buildPrismaSelect(info);
-    return await this.commentsService.findAll(select);
+    return await this.commentsService.findAll(info);
   }
 }
 
