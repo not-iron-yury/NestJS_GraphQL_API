@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
 import { CreateUserInput } from 'src/graphql/users/users.input';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -6,25 +7,23 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateUserInput) {
-    return await this.prisma.user.create({ data });
-  }
-
-  async findOne(id: string) {
-    return await this.prisma.user.findUnique({
-      where: { id },
+  async create(data: CreateUserInput, select: any) {
+    return await this.prisma.user.create({
+      data,
+      ...select,
     });
   }
 
-  async findAll() {
-    return await this.prisma.user.findMany();
+  async findOne(id: string, select: any) {
+    return await this.prisma.user.findUnique({
+      where: { id },
+      ...select,
+    });
   }
 
-  async findAllPosts(id: string) {
-    return this.prisma.post.findMany({ where: { authorId: id } });
-  }
-
-  async findAllComments(id: string) {
-    return this.prisma.comment.findMany({ where: { authorId: id } });
+  async findAll(select: any) {
+    return await this.prisma.user.findMany({
+      ...select,
+    });
   }
 }
