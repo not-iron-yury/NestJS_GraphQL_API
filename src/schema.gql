@@ -21,7 +21,7 @@ input CreateCommentInput {
 
 input CreatePostInput {
   authorId: String!
-  content: String
+  content: String!
   title: String!
 }
 
