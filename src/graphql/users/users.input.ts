@@ -13,4 +13,10 @@ export class CreateUserInput {
   name?: string;
 }
 
-// GraphQL всегда разделяет input и output — в отличие от REST, где модель может быть одна.
+@InputType()
+export class UpdateUserInput {
+  @Field({ nullable: true })
+  @IsOptional()
+  @Length(2, 15)
+  name?: string;
+}
