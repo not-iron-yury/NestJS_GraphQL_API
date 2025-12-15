@@ -1,11 +1,38 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import type { GraphQLResolveInfo } from 'graphql';
-import { CreateCommentInput } from 'src/graphql/comments/comments.input';
+import {
+  CreateCommentInput,
+  UpdateCommentInput,
+} from 'src/graphql/comments/comments.input';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class CommentsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  // ----------------- Dataloader -----------------
+  async update(id: string, data: UpdateCommentInput) {
+    const exists = await this.prisma.comment.findUnique({ where: { id } });
+    if (!exists) {
+      throw new NotFoundException('Комментарий не найден');
+    }
+
+    return this.prisma.comment.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async delete(id: string) {
+    const exists = await this.prisma.comment.findUnique({ where: { id } });
+    if (!exists) {
+      throw new NotFoundException('Комментарий не найден');
+    }
+
+    return await this.prisma.comment.delete({ where: { id } });
+  }
+
+  // ----------------- Smart Select -----------------
 
   async create(data: CreateCommentInput, info: GraphQLResolveInfo) {
     const newComment = await this.prisma.comment.create({ data });

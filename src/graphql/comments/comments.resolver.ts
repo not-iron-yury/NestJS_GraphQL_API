@@ -1,12 +1,41 @@
 import { Args, Info, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { GraphQLResolveInfo } from 'graphql';
-import { CreateCommentInput } from 'src/graphql/comments/comments.input';
+import {
+  CreateCommentInput,
+  UpdateCommentInput,
+} from 'src/graphql/comments/comments.input';
+import { CommentsLoader } from 'src/graphql/comments/comments.loader';
 import { CommentsService } from './comments.service';
 import { Comment } from './comments.type';
 
 @Resolver(() => Comment)
 export class CommentsResolver {
-  constructor(private readonly commentsService: CommentsService) {}
+  constructor(
+    private readonly commentsService: CommentsService,
+    private readonly commentsLoader: CommentsLoader,
+  ) {}
+
+  // ----------------- Dataloader -----------------
+
+  // изменить
+  @Mutation(() => Comment)
+  async updateComment(
+    @Args('id') id: string,
+    @Args('data') data: UpdateCommentInput,
+  ) {
+    await this.commentsService.update(id, data); // выполняется SQL UPDATE, GraphQL про это вообще не знает и никакого кеша тут нет
+    return this.commentsLoader.byId.load(id); // вытягиваем из БД данные комментария (для возврата) через Loader и кешируем
+  }
+
+  // удалить
+  @Mutation(() => Comment)
+  async deleteComment(@Args('id') id: string) {
+    const comment = await this.commentsLoader.byId.load(id); // предварительно вытягиваем и кешируем данные из БД
+    await this.commentsService.delete(id); // удаляем запись в БД
+    return comment;
+  }
+
+  // ----------------- Smart Select -----------------
 
   // создать комментарий
   @Mutation(() => Comment)

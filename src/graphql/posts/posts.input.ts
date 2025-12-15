@@ -18,12 +18,12 @@ export class CreatePostInput {
 
 @InputType()
 export class UpdatePostInput {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @Length(3, 100)
   title?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @Length(10, 5000)
   content?: string;

@@ -1,12 +1,41 @@
 import { Args, Info, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { GraphQLResolveInfo } from 'graphql';
-import { CreatePostInput } from 'src/graphql/posts/posts.input';
+import {
+  CreatePostInput,
+  UpdatePostInput,
+} from 'src/graphql/posts/posts.input';
+import { PostsLoader } from 'src/graphql/posts/posts.loader';
 import { PostsService } from './posts.service';
 import { Post } from './posts.type';
 
 @Resolver(() => Post)
 export class PostsResolver {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(
+    private readonly postsService: PostsService,
+    private readonly postsLoader: PostsLoader,
+  ) {}
+
+  // ----------------- Dataloader -----------------
+
+  // изменить
+  @Mutation(() => Post)
+  async updatePost(
+    @Args('id') id: string,
+    @Args('data') data: UpdatePostInput,
+  ) {
+    await this.postsService.update(id, data); // выполняется SQL UPDATE, GraphQL про это вообще не знает и никакого кеша тут нет
+    return this.postsLoader.byId.load(id); // вытягиваем из БД данные поста (для возврата) через Loader и кешируем
+  }
+
+  // удалить
+  @Mutation(() => Post)
+  async deletePost(@Args('id') id: string) {
+    const post = await this.postsLoader.byId.load(id); // предварительно вытягиваем и кешируем данные из БД
+    await this.postsService.delete(id); // удаляем запись в БД
+    return post;
+  }
+
+  // ----------------- Smart Select -----------------
 
   // создать пост
   @Mutation(() => Post)

@@ -1,18 +1,47 @@
 import { Args, Info, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { GraphQLResolveInfo } from 'graphql';
-import { CreateUserInput } from 'src/graphql/users/users.input';
+import {
+  CreateUserInput,
+  UpdateUserInput,
+} from 'src/graphql/users/users.input';
+import { UsersLoader } from 'src/graphql/users/users.loader';
 import { UsersService } from './users.service';
 import { User } from './users.type';
 
 @Resolver(() => User) // этот резолвер обслуживает тип User
 export class UsersResolver {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly usersLoader: UsersLoader,
+  ) {}
+
+  // ----------------- Dataloader -----------------
 
   // создать пользователя
   @Mutation(() => User)
   async createUser(@Args('data') data: CreateUserInput) {
-    return await this.usersService.create(data);
+    return this.usersService.create(data);
   }
+
+  // изменить
+  @Mutation(() => User)
+  async updateUser(
+    @Args('id') id: string,
+    @Args('data') data: UpdateUserInput,
+  ) {
+    await this.usersService.update(id, data); // выполняется SQL UPDATE, GraphQL про это вообще не знает и никакого кеша тут нет
+    return this.usersLoader.byId.load(id); // вытягиваем из БД данные пользователя (для возврата) через Loader и кешируем
+  }
+
+  // удалить
+  @Mutation(() => User)
+  async deleteUser(@Args('id') id: string) {
+    const user = await this.usersLoader.byId.load(id); // предварительно вытягиваем и кешируем данные из БД
+    await this.usersService.delete(id); // удаляем запись в БД
+    return user;
+  }
+
+  // ----------------- Smart Select -----------------
 
   // найти пользователя по id
   @Query(() => User)
