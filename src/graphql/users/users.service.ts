@@ -1,9 +1,12 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Injectable } from '@nestjs/common';
 import type { GraphQLResolveInfo } from 'graphql';
+import {
+  badInput,
+  conflict,
+  internalError,
+  notFound,
+} from 'src/graphql/errors/graphql-errors';
 import {
   CreateUserInput,
   UpdateUserInput,
@@ -16,40 +19,52 @@ export class UsersService {
 
   // ----------------- Dataloader -----------------
   async create(data: CreateUserInput) {
-    const exists = await this.prisma.user.findUnique({
-      where: { email: data.email },
-    });
-
-    if (exists) {
-      throw new BadRequestException(
-        'Пользователь с таким email уже существует',
-      );
+    // бизнес-валидация, запрос корректный и class-validator проходит, но логика приложения запрещает действие
+    if (data.name?.toLowerCase().includes('admin')) {
+      throw badInput('Некорректное имя пользователя');
     }
 
-    return await this.prisma.user.create({
-      data,
-    });
+    try {
+      return await this.prisma.user.create({ data });
+    } catch (e: any) {
+      // ловим ошибки только на границе (Prisma / внешние системы) и бросаем свои GraphQLError
+      if (e.code === 'P2002') {
+        throw conflict('Пользователь с таким email уже существует');
+      } else {
+        throw internalError();
+      }
+    }
   }
 
   async update(id: string, data: UpdateUserInput) {
-    const exists = await this.prisma.user.findUnique({ where: { id } });
-    if (!exists) {
-      throw new NotFoundException('Пользователь не найден');
+    if (data.name?.toLowerCase().includes('admin')) {
+      throw badInput('Некорректное имя пользователя');
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data,
-    });
+    try {
+      return this.prisma.user.update({
+        where: { id },
+        data,
+      });
+    } catch (e: any) {
+      if (e.code === 'P2025') {
+        throw notFound('Пользователь не найден');
+      } else {
+        throw internalError();
+      }
+    }
   }
 
   async delete(id: string) {
-    const exists = await this.prisma.user.findUnique({ where: { id } });
-    if (!exists) {
-      throw new NotFoundException('Пользователь не найден');
+    try {
+      return await this.prisma.user.delete({ where: { id } });
+    } catch (e: any) {
+      if (e.code === 'P2025') {
+        throw notFound('Пользователь не найден');
+      } else {
+        throw internalError();
+      }
     }
-
-    return await this.prisma.user.delete({ where: { id } });
   }
 
   // ----------------- Smart Select -----------------

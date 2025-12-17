@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Injectable } from '@nestjs/common';
 import type { GraphQLResolveInfo } from 'graphql';
+import { internalError, notFound } from 'src/graphql/errors/graphql-errors';
 import {
   CreatePostInput,
   UpdatePostInput,
@@ -12,24 +14,30 @@ export class PostsService {
 
   // ----------------- Dataloader -----------------
   async update(id: string, data: UpdatePostInput) {
-    const exists = await this.prisma.post.findUnique({ where: { id } });
-    if (!exists) {
-      throw new NotFoundException('Пост не найден');
+    try {
+      return this.prisma.post.update({
+        where: { id },
+        data,
+      });
+    } catch (e) {
+      if (e.code === 'P2025') {
+        throw notFound('Пост не найден');
+      } else {
+        throw internalError();
+      }
     }
-
-    return this.prisma.post.update({
-      where: { id },
-      data,
-    });
   }
 
   async delete(id: string) {
-    const exists = await this.prisma.post.findUnique({ where: { id } });
-    if (!exists) {
-      throw new NotFoundException('Пост не найден');
+    try {
+      return await this.prisma.post.delete({ where: { id } });
+    } catch (e) {
+      if (e.code === 'P2025') {
+        throw notFound('Пост не найден');
+      } else {
+        throw internalError();
+      }
     }
-
-    return await this.prisma.post.delete({ where: { id } });
   }
 
   // ----------------- Smart Select -----------------

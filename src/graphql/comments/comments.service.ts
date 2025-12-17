@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Injectable } from '@nestjs/common';
 import type { GraphQLResolveInfo } from 'graphql';
 import {
   CreateCommentInput,
   UpdateCommentInput,
 } from 'src/graphql/comments/comments.input';
+import { internalError, notFound } from 'src/graphql/errors/graphql-errors';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -12,24 +14,30 @@ export class CommentsService {
 
   // ----------------- Dataloader -----------------
   async update(id: string, data: UpdateCommentInput) {
-    const exists = await this.prisma.comment.findUnique({ where: { id } });
-    if (!exists) {
-      throw new NotFoundException('Комментарий не найден');
+    try {
+      return this.prisma.comment.update({
+        where: { id },
+        data,
+      });
+    } catch (e) {
+      if (e.code === 'P2025') {
+        throw notFound('Комментарий не найден');
+      } else {
+        throw internalError();
+      }
     }
-
-    return this.prisma.comment.update({
-      where: { id },
-      data,
-    });
   }
 
   async delete(id: string) {
-    const exists = await this.prisma.comment.findUnique({ where: { id } });
-    if (!exists) {
-      throw new NotFoundException('Комментарий не найден');
+    try {
+      return await this.prisma.comment.delete({ where: { id } });
+    } catch (e) {
+      if (e.code === 'P2025') {
+        throw notFound('Комментарий не найден');
+      } else {
+        throw internalError();
+      }
     }
-
-    return await this.prisma.comment.delete({ where: { id } });
   }
 
   // ----------------- Smart Select -----------------
